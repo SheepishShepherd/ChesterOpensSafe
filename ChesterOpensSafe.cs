@@ -24,7 +24,9 @@ namespace ChesterOpensSafe
 			Player.piggyBankProjTracker.Clear();
 			handlingChester = false;
 			LocalChester = -1;
-			Main.NewText(debugMessage);
+
+			// NewText for debugging
+			//Main.NewText(debugMessage);
 		}
 
 		private void HandleChesterSafe() {
