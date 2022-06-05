@@ -6,10 +6,7 @@ namespace ChesterOpensSafe
 {
 	public class ChesterOpensSafe : Mod
 	{
-        public override void AddRecipeGroups()
-        {
-            base.AddRecipeGroups();
-        }
+
     }
 
     public class ChesterPlayer : ModPlayer
