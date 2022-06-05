@@ -7,29 +7,27 @@ namespace ChesterOpensSafe
 	public class ChesterOpensSafe : Mod
 	{
 
-    }
+	}
 
-    public class ChesterPlayer : ModPlayer
-    {
+	public class ChesterPlayer : ModPlayer
+	{
 		bool handlingChester = false;
 		int LocalChester = -1;
 
-        public override void PostUpdateMiscEffects() {
+		public override void PostUpdateMiscEffects() {
 			if (Main.LocalPlayer.piggyBankProjTracker.ProjectileType == ProjectileID.ChesterPet || handlingChester) {
 				HandleChesterSafe();
 			}
 		}
 
-		private void UnhandleChester(string debugMessage)
-        {
+		private void UnhandleChester(string debugMessage) {
 			Player.piggyBankProjTracker.Clear();
 			handlingChester = false;
 			LocalChester = -1;
 			Main.NewText(debugMessage);
 		}
 
-        private void HandleChesterSafe()
-		{
+		private void HandleChesterSafe() {
 			if (Player.chest == -2) {
 				LocalChester = Player.piggyBankProjTracker.ProjectileLocalIndex;
 
@@ -53,8 +51,7 @@ namespace ChesterOpensSafe
 						int y = (int)(((double)Player.position.Y + (double)Player.height * 0.5) / 16.0);
 						bool xOutOfRange = x < Player.chestX - Player.tileRangeX || x > Player.chestX + Player.tileRangeX + 1;
 						bool yOutOfRange = y < Player.chestY - Player.tileRangeY || y > Player.chestY + Player.tileRangeY + 1;
-						if (xOutOfRange || yOutOfRange)
-						{
+						if (xOutOfRange || yOutOfRange) {
 							UnhandleChester("Projectile is too far from the player");
 							return;
 						}
@@ -62,9 +59,9 @@ namespace ChesterOpensSafe
 					Player.piggyBankProjTracker.Set(projectile);
 					Recipe.FindRecipes();
 				}
-                else {
+				else {
 					UnhandleChester("Projectile index is -1");
-                }
+				}
 			}
 			else {
 				UnhandleChester("Player bank is not -2 nor -3");
