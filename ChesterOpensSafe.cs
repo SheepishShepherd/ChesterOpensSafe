@@ -15,7 +15,7 @@ namespace ChesterOpensSafe
 		int LocalChester = -1;
 
 		public override void PostUpdateMiscEffects() {
-			if (Main.LocalPlayer.piggyBankProjTracker.ProjectileType == ProjectileID.ChesterPet || handlingChester) {
+			if (Player.piggyBankProjTracker.ProjectileType == ProjectileID.ChesterPet || handlingChester) {
 				HandleChesterSafe();
 			}
 		}
@@ -49,6 +49,7 @@ namespace ChesterOpensSafe
 						LocalChester = Player.piggyBankProjTracker.ProjectileLocalIndex;
 						handlingChester = true;
 						Player.chest = -3;
+
 						int x = (int)(((double)Player.position.X + (double)Player.width * 0.5) / 16.0);
 						int y = (int)(((double)Player.position.Y + (double)Player.height * 0.5) / 16.0);
 						bool xOutOfRange = x < Player.chestX - Player.tileRangeX || x > Player.chestX + Player.tileRangeX + 1;
