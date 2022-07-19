@@ -8,6 +8,7 @@ namespace ChesterOpensSafe
 	public class ChesterOpensSafe : Mod
 	{
 		// TODO: [Issue] Chest remains at -2 for a single frame
+		// TODO: [Issue] Interacting with other tiles sometimes plays sounds twice
 	}
 
 	public class ChesterPlayer : ModPlayer
@@ -88,7 +89,7 @@ namespace ChesterOpensSafe
 			Player.piggyBankProjTracker.Clear();
 			handlingChester = false;
 			Recipe.FindRecipes();
-			Main.NewText(debugMessage); // NewText for debugging
+			//Main.NewText(debugMessage); // NewText for debugging
 		}
 
 		private void HandleChesterSafe(Projectile chester) {
