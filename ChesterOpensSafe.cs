@@ -1,130 +1,104 @@
 using Microsoft.Xna.Framework;
 using Terraria;
+using Terraria.GameInput;
 using Terraria.ID;
 using Terraria.ModLoader;
+using Terraria.UI;
 
 namespace ChesterOpensSafe
 {
 	public class ChesterOpensSafe : Mod
 	{
-		// TODO: [Issue] Chest remains at -2 for a single frame
-		// TODO: [Issue] Interacting with other tiles sometimes plays sounds twice
-	}
+		// TODO: Learn IL Editing to make this simpler?
 
-	public class ChesterPlayer : ModPlayer
-	{
-		// A bool to flag if Chester is open.
-		// This will not be reset each update as we want it to carry over into the next tick.
-		bool handlingChester = false;
+		public override void Load() {
+			On_Player.HandleBeingInChestRange += Player_HandleBeingInChestRange;
+			On_Main.TryInteractingWithMoneyTrough += Main_TryInteractingWithMoneyTrough;
+		}
 
-		// Temporarily set the player's chest to Piggy Bank before the vanilla Chest Handling code is run.
-		// Chest Handling for Chester's inventory will close if it is not set to -2.
-		public override void PreUpdate() {
-			if (handlingChester) {
-				Player.chest = -2;
-
-				// Prevents Chester being considered 'open' when accessing a Piggy Bank or Safe
-				if (Main.mouseRight && Main.mouseRightRelease && Player.BlockInteractionWithProjectiles == 0) {
-					if (Player.IsTileTypeInInteractionRange(TileID.Safes) && Main.tile[Player.tileTargetX, Player.tileTargetY].TileType == TileID.Safes) {
-						UnhandleChester("A Safe was opened via right-click");
-						return;
-					}
-					// Smart Interact can be a non-tile, so check if its within the bounds
-					if (Main.SmartInteractX >= 0 && Main.SmartInteractX <= Main.maxTilesX && Main.SmartInteractY >= 0 && Main.SmartInteractY <= Main.maxTilesY) {
-						if (Main.tile[Main.SmartInteractX, Main.SmartInteractY].TileType == TileID.Safes) {
-							UnhandleChester("A Safe was opened via smart-cursor");
-							return;
-						}
-					}
-
-					if (Player.IsTileTypeInInteractionRange(TileID.PiggyBank) && Main.tile[Player.tileTargetX, Player.tileTargetY].TileType == TileID.PiggyBank) {
-						UnhandleChester("A Piggy Bank was opened via right-click");
-						return;
-					}
-					if (Main.SmartInteractX >= 0 && Main.SmartInteractX <= Main.maxTilesX && Main.SmartInteractY >= 0 && Main.SmartInteractY <= Main.maxTilesY) {
-						if (Main.tile[Main.SmartInteractX, Main.SmartInteractY].TileType == TileID.PiggyBank) {
-							UnhandleChester("A Piggy Bank was opened via smart-cursor");
-							return;
-						}
-					}
+		private static void Player_HandleBeingInChestRange(On_Player.orig_HandleBeingInChestRange orig, Player player) {
+			if (player.piggyBankProjTracker.ProjectileType == ProjectileID.ChesterPet) {
+				if (player.chest != -3) {
+					player.piggyBankProjTracker.Clear();
 				}
-			}
-		}
-
-		// Until the first frame issue is resolved, this will allow users with autopause to access the safe when using Chester
-		public override void UpdateAutopause() {
-			if (Player.piggyBankProjTracker.ProjectileType == ProjectileID.ChesterPet) {
-				Player.chest = -3;
-				Recipe.FindRecipes();
-			}
-		}
-
-		// After vanilla Chest Handling code is run, determine if it Chester was being used.
-		// If so, run the modded Chester handling code.
-		public override void PostUpdate() {
-			// Prevents Chester from closing when accessing it while already being in a piggy bank chest
-			if (!handlingChester && Player.chest == -2 && Main.mouseRight && Main.mouseRightRelease && Player.BlockInteractionWithProjectiles == 0) {
-				int index = Player.GetListOfProjectilesToInteractWithHack().FindIndex(x => Main.projectile[x].type == ProjectileID.ChesterPet);
-				if (index != -1 && Main.projectile[index].Hitbox.Contains(Main.MouseWorld.ToPoint())) {
-					Player.chest = -3;
+				else {
+					player.chest = -3;
 					Recipe.FindRecipes();
-					return;
-				}
-				else if (Main.SmartInteractProj != -1 && Main.projectile[Main.SmartInteractProj].type == ProjectileID.ChesterPet) {
-					Player.chest = -3;
-					Recipe.FindRecipes();
-					return;
 				}
 			}
-
-			// Run the Chester handling code if Chester is being used
-			handlingChester = Player.piggyBankProjTracker.ProjectileType == ProjectileID.ChesterPet;
-			if (handlingChester) {
-				HandleChesterSafe(Main.projectile[Player.piggyBankProjTracker.ProjectileLocalIndex]);
+			else {
+				orig(player);
 			}
 		}
 
-		private void UnhandleChester(string debugMessage) {
-			// To prevent anything breaking, clear the piggyBankTracker and reset the bool.
-			Player.piggyBankProjTracker.Clear();
-			handlingChester = false;
-			Recipe.FindRecipes();
-			//Main.NewText(debugMessage); // NewText for debugging
-		}
-
-		private void HandleChesterSafe(Projectile chester) {
-			// Run through each case where Chester should be closed...
-
-			if (!chester.active || chester.type != ProjectileID.ChesterPet) {
-				UnhandleChester("Projectile is inactive or not the correct type");
-				return;
+		private static int Main_TryInteractingWithMoneyTrough(On_Main.orig_TryInteractingWithMoneyTrough orig, Projectile proj) {
+			if (Main.gamePaused || Main.gameMenu || proj.type != ProjectileID.ChesterPet) {
+				return orig(proj);
 			}
 
-			if (!Main.playerInventory) {
-				UnhandleChester("Inventory was closed");
-				return;
+			bool usingMouse = !Main.SmartCursorIsUsed && !PlayerInput.UsingGamepad;
+			Player localPlayer = Main.LocalPlayer;
+			Point point = proj.Center.ToTileCoordinates();
+			Vector2 compareSpot = localPlayer.Center;
+			if (!localPlayer.IsProjectileInteractibleAndInInteractionRange(proj, ref compareSpot)) {
+				localPlayer.piggyBankProjTracker.Clear();
+				return 0;
 			}
-
-			Vector2 compareSpot = Player.Center;
-			if (!Player.IsProjectileInteractibleAndInInteractionRange(chester, ref compareSpot)) {
-				UnhandleChester("Projectile is too far from the player or uninteractible");
-				return;
+			Matrix matrix = Matrix.Invert(Main.GameViewMatrix.ZoomMatrix);
+			Vector2 position = Main.ReverseGravitySupport(Main.MouseScreen);
+			Vector2.Transform(Main.screenPosition, matrix);
+			Vector2 v = Vector2.Transform(position, matrix) + Main.screenPosition;
+			bool flag2 = proj.Hitbox.Contains(v.ToPoint());
+			if (!((flag2 || Main.SmartInteractProj == proj.whoAmI) & !localPlayer.lastMouseInterface)) {
+				if (!usingMouse) {
+					return 1;
+				}
+				return 0;
 			}
-
+			Main.HasInteractibleObjectThatIsNotATile = true;
+			if (flag2) {
+				localPlayer.noThrow = 2;
+				localPlayer.cursorItemIconEnabled = true;
+				localPlayer.cursorItemIconID = 3213;
+				if (proj.type == 960) {
+					localPlayer.cursorItemIconID = 5098;
+				}
+			}
+			if (PlayerInput.UsingGamepad) {
+				localPlayer.GamepadEnableGrappleCooldown();
+			}
 			if (Main.mouseRight && Main.mouseRightRelease && Player.BlockInteractionWithProjectiles == 0) {
-				if (chester.Hitbox.Contains(Main.MouseWorld.ToPoint())) {
-					UnhandleChester("Closed Chester via right-click");
-					return;
+				Main.mouseRightRelease = false;
+				localPlayer.tileInteractAttempted = true;
+				localPlayer.tileInteractionHappened = true;
+				localPlayer.releaseUseTile = false;
+				if (localPlayer.chest == -3) {
+					localPlayer.chest = -1;
+					Main.PlayInteractiveProjectileOpenCloseSound(proj.type, open: false);
+					Recipe.FindRecipes();
 				}
-				if (Main.SmartInteractProj == Player.piggyBankProjTracker.ProjectileLocalIndex) {
-					UnhandleChester("Closed Chester via smart-cursor");
-					return;
+				else {
+					localPlayer.chest = -3;
+					for (int i = 0; i < 40; i++) {
+						ItemSlot.SetGlow(i, -1f, chest: true);
+					}
+					localPlayer.piggyBankProjTracker.Set(proj);
+					localPlayer.chestX = point.X;
+					localPlayer.chestY = point.Y;
+					localPlayer.SetTalkNPC(-1);
+					Main.SetNPCShopIndex(0);
+					Main.playerInventory = true;
+					Main.PlayInteractiveProjectileOpenCloseSound(proj.type, open: true);
+					Recipe.FindRecipes();
 				}
 			}
-
-			// Set the Player's chest to the safe inventory.
-			Player.chest = -3;
-			Recipe.FindRecipes();
+			if (!Main.SmartCursorIsUsed && !PlayerInput.UsingGamepad) {
+				return 0;
+			}
+			if (!usingMouse) {
+				return 2;
+			}
+			return 0;
 		}
 	}
 }
