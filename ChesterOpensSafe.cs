@@ -61,7 +61,7 @@ namespace ChesterOpensSafe
 		}
 
 		private static int Main_TryInteractingWithMoneyTrough(On_Main.orig_TryInteractingWithMoneyTrough orig, Projectile proj) {
-			if (Main.gamePaused || Main.gameMenu || proj.type != ProjectileID.ChesterPet)
+			if (Main.gamePaused || Main.gameMenu)
 				return orig(proj); // if not a chester pet projectile, just default to the original method
 
 			bool usingMouse = !Main.SmartCursorIsUsed && !PlayerInput.UsingGamepad;
@@ -98,26 +98,49 @@ namespace ChesterOpensSafe
 				localPlayer.tileInteractAttempted = true;
 				localPlayer.tileInteractionHappened = true;
 				localPlayer.releaseUseTile = false;
-				if (localPlayer.chest == -3) {
-					//Main.NewText($"Chester interacted: closed. (Main_TryInteractingWithMoneyTrough)");
-					localPlayer.chest = -1;
-					Main.PlayInteractiveProjectileOpenCloseSound(proj.type, open: false);
-					Recipe.FindRecipes();
+				if (proj.type == ProjectileID.ChesterPet) {
+					if (localPlayer.chest == -3) {
+						//Main.NewText($"Chester interacted: closed. (Main_TryInteractingWithMoneyTrough)");
+						localPlayer.chest = -1;
+						Main.PlayInteractiveProjectileOpenCloseSound(proj.type, open: false);
+						Recipe.FindRecipes();
+					}
+					else {
+						//Main.NewText($"Chester interacted: open. (Main_TryInteractingWithMoneyTrough)");
+						localPlayer.chest = -3; // set the chester inventory to safe contents
+						for (int i = 0; i < 40; i++) {
+							ItemSlot.SetGlow(i, -1f, chest: true);
+						}
+						localPlayer.piggyBankProjTracker.Set(proj);
+						localPlayer.chestX = point.X;
+						localPlayer.chestY = point.Y;
+						localPlayer.SetTalkNPC(-1);
+						Main.SetNPCShopIndex(0);
+						Main.playerInventory = true;
+						Main.PlayInteractiveProjectileOpenCloseSound(proj.type, open: true);
+						Recipe.FindRecipes();
+					}
 				}
 				else {
-					//Main.NewText($"Chester interacted: open. (Main_TryInteractingWithMoneyTrough)");
-					localPlayer.chest = -3; // set the chester inventory to safe contents
-					for (int i = 0; i < 40; i++) {
-						ItemSlot.SetGlow(i, -1f, chest: true);
+					if (localPlayer.chest == -2) {
+						localPlayer.chest = -1;
+						Main.PlayInteractiveProjectileOpenCloseSound(proj.type, open: false);
+						Recipe.FindRecipes();
 					}
-					localPlayer.piggyBankProjTracker.Set(proj);
-					localPlayer.chestX = point.X;
-					localPlayer.chestY = point.Y;
-					localPlayer.SetTalkNPC(-1);
-					Main.SetNPCShopIndex(0);
-					Main.playerInventory = true;
-					Main.PlayInteractiveProjectileOpenCloseSound(proj.type, open: true);
-					Recipe.FindRecipes();
+					else {
+						localPlayer.chest = -2;
+						for (int i = 0; i < 40; i++) {
+							ItemSlot.SetGlow(i, -1f, chest: true);
+						}
+						localPlayer.piggyBankProjTracker.Set(proj);
+						localPlayer.chestX = point.X;
+						localPlayer.chestY = point.Y;
+						localPlayer.SetTalkNPC(-1);
+						Main.SetNPCShopIndex(0);
+						Main.playerInventory = true;
+						Main.PlayInteractiveProjectileOpenCloseSound(proj.type, open: true);
+						Recipe.FindRecipes();
+					}
 				}
 			}
 
