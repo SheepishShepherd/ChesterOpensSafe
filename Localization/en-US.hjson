@@ -1,0 +1,22 @@
+Mods: {
+	ChesterOpensSafe: {
+		Configs: {
+			Configuration: {
+				DisplayName: Configuration
+
+				ChesterBankValue: {
+					Label: Chester Opens
+					Tooltip: ""
+				}
+			}
+
+			Bank: {
+				Tooltip: ""
+				PiggyBank.Label: "[i:87] {$ItemName.PiggyBank}"
+				Safe.Label: "[i:346] {$ItemName.Safe}"
+				Forge.Label: "[i:3813] {$ItemName.DefendersForge}"
+				VoidVault.Label: "[i:4131] {$ItemName.VoidVault}"
+			}
+		}
+	}
+}

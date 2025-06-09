@@ -12,15 +12,20 @@ namespace ChesterOpensSafe
 {
 	public class ChesterOpensSafe : Mod
 	{
+		internal static Configuration config;
+		private static int RequestChesterBank => (int)config.ChesterBankValue;
 		// TODO: Learn IL Editing to make this simpler?
 
 		public override void Load() {
-			On_Player.HandleBeingInChestRange += Player_HandleBeingInChestRange; // Logic for when chester is actively open
-			On_Main.TryInteractingWithMoneyTrough += Main_TryInteractingWithMoneyTrough; // Interacting with chester to open logic
-			IL_Projectile.TryGetContainerIndex += Projectile_TryGetContainerIndex; // Quick-stack logic
-			On_Player.QuickStackAllChests += Player_QuickStackAllChests; // Needed to make above IL edit work??
-			//On_Player.GetNearbyContainerProjectilesList += Player_GetNearbyContainerProjectilesList;
-			//On_ChestUI.QuickStack += ChestUI_QuickStack;
+			// No need to interject when the Piggy Bank is the vanilla container
+			if (config.ChesterBankValue != Configuration.Bank.PiggyBank) {
+				On_Player.HandleBeingInChestRange += Player_HandleBeingInChestRange; // Logic for when chester is actively open
+				On_Main.TryInteractingWithMoneyTrough += Main_TryInteractingWithMoneyTrough; // Interacting with chester to open logic
+				IL_Projectile.TryGetContainerIndex += Projectile_TryGetContainerIndex; // Quick-stack logic
+				On_Player.QuickStackAllChests += Player_QuickStackAllChests; // Needed to make above IL edit work??
+				//On_Player.GetNearbyContainerProjectilesList += Player_GetNearbyContainerProjectilesList;
+				//On_ChestUI.QuickStack += ChestUI_QuickStack;
+			}
 		}
 
 		private static void Player_HandleBeingInChestRange(On_Player.orig_HandleBeingInChestRange orig, Player player) {
@@ -28,7 +33,7 @@ namespace ChesterOpensSafe
 				orig(player); // if not a chester pet projectile, just default to the original method
 			}
 			else {
-				if (player.chest != -3) {
+				if (player.chest != RequestChesterBank) {
 					player.piggyBankProjTracker.Clear(); // clear the tracked projectile if no longer accessing safe contents
 					//Main.NewText($"Projectile tracker cleared. (Player_HandleBeingInChestRange)");
 				}
@@ -62,7 +67,7 @@ namespace ChesterOpensSafe
 
 		private static int Main_TryInteractingWithMoneyTrough(On_Main.orig_TryInteractingWithMoneyTrough orig, Projectile proj) {
 			if (Main.gamePaused || Main.gameMenu)
-				return orig(proj); // if not a chester pet projectile, just default to the original method
+				return 0;
 
 			bool usingMouse = !Main.SmartCursorIsUsed && !PlayerInput.UsingGamepad;
 			Player localPlayer = Main.LocalPlayer;
@@ -85,9 +90,9 @@ namespace ChesterOpensSafe
 			if (flag2) {
 				localPlayer.noThrow = 2;
 				localPlayer.cursorItemIconEnabled = true;
-				localPlayer.cursorItemIconID = 3213;
-				if (proj.type == 960)
-					localPlayer.cursorItemIconID = 5098;
+				localPlayer.cursorItemIconID = ItemID.MoneyTrough;
+				if (proj.type == ProjectileID.ChesterPet)
+					localPlayer.cursorItemIconID = ItemID.ChesterPetItem;
 			}
 
 			if (PlayerInput.UsingGamepad)
@@ -99,7 +104,7 @@ namespace ChesterOpensSafe
 				localPlayer.tileInteractionHappened = true;
 				localPlayer.releaseUseTile = false;
 				if (proj.type == ProjectileID.ChesterPet) {
-					if (localPlayer.chest == -3) {
+					if (localPlayer.chest == RequestChesterBank) {
 						//Main.NewText($"Chester interacted: closed. (Main_TryInteractingWithMoneyTrough)");
 						localPlayer.chest = -1;
 						Main.PlayInteractiveProjectileOpenCloseSound(proj.type, open: false);
@@ -107,7 +112,7 @@ namespace ChesterOpensSafe
 					}
 					else {
 						//Main.NewText($"Chester interacted: open. (Main_TryInteractingWithMoneyTrough)");
-						localPlayer.chest = -3; // set the chester inventory to safe contents
+						localPlayer.chest = RequestChesterBank; // set the chester inventory to safe contents
 						for (int i = 0; i < 40; i++) {
 							ItemSlot.SetGlow(i, -1f, chest: true);
 						}
@@ -167,8 +172,8 @@ namespace ChesterOpensSafe
 				c.Emit(OpCodes.Bne_Un_S, label); // if check above is false, move back to label reference
 
 				c.Emit(OpCodes.Ldarg_1); // containerIndex parameter
-				c.Emit(OpCodes.Ldc_I4_S, (sbyte)-3); // variable desired
-				c.Emit(OpCodes.Stind_I4); // apply -3 to containerIndex
+				c.Emit(OpCodes.Ldc_I4_S, (sbyte)RequestChesterBank); // variable desired
+				c.Emit(OpCodes.Stind_I4); // apply the selected value to containerIndex
 				c.Emit(OpCodes.Ldc_I4_1); // variable true
 				c.Emit(OpCodes.Ret); // apply true to return
 
